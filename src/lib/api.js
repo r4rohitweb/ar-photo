@@ -8,7 +8,7 @@ export function endpoint(action, params = {}) {
 let csrf = '';
 export async function api(action, { method = 'GET', body, params } = {}) {
   const response = await fetch(endpoint(action, params), { method, credentials: 'same-origin', headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(csrf ? { 'X-CSRF-Token': csrf } : {}) }, body: body ? JSON.stringify(body) : undefined });
-  const result = parseResponse(await response.text(), response.status);
+  const result = parseResponse(await response.text(), response.status, { development: import.meta.env.DEV });
   if (result.csrf) csrf = result.csrf;
   return result;
 }
@@ -18,7 +18,7 @@ export function upload(form, onProgress, { id, signal } = {}) {
     xhr.open('POST', endpoint(id ? 'update' : 'create', id ? { id } : {}));
     if (csrf) xhr.setRequestHeader('X-CSRF-Token', csrf);
     xhr.upload.onprogress = e => e.lengthComputable && onProgress(Math.round(e.loaded / e.total * 100));
-    xhr.onload = () => { try { resolve(parseResponse(xhr.responseText, xhr.status)); } catch (error) { reject(error); } };
+    xhr.onload = () => { try { resolve(parseResponse(xhr.responseText, xhr.status, { development: import.meta.env.DEV })); } catch (error) { reject(error); } };
     xhr.onerror = () => reject(new Error('Cannot reach the upload server. Check your connection.'));
     xhr.onabort = () => reject(new Error('Upload cancelled.'));
     signal?.addEventListener('abort', () => xhr.abort(), { once: true });

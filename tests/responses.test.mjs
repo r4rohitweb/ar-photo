@@ -11,3 +11,9 @@ test('JSON API errors retain their specific server message', () => {
   assert.deepEqual(parseResponse('{"experience":{"unique_id":"abc"}}', 201), { experience: { unique_id: 'abc' } });
   assert.throws(() => parseResponse('<html>unexpected error</html>', 500), /HTTP 500/);
 });
+test('hosted deployment errors give deployment guidance while local errors retain Vite guidance', () => {
+  assert.throws(() => parseResponse('<html>Not found</html>', 404), /hosted PHP backend/);
+  assert.throws(() => parseResponse('<html>Not found</html>', 404, { development: true }), /Vite proxy/);
+  assert.throws(() => parseResponse('', 502), /hosted backend service/);
+  assert.throws(() => parseResponse('', 502, { development: true }), /npm run dev/);
+});
