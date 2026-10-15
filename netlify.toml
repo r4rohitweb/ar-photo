@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build:netlify"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Set PHP_BACKEND_URL in Netlify's build environment to the complete HTTPS
+# PHP endpoint, e.g. https://backend.example.com/api/index.php.
+# build:netlify generates a same-origin API proxy in dist/_redirects.

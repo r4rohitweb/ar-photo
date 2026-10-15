@@ -131,6 +131,22 @@ Creation combines validated file upload and experience creation in one request s
 
 There are basic session-based upload and login limits. They are **not** a substitute for an edge/IP rate limiter on an internet-facing public upload service. Configure host-level quotas, abuse controls and backups before public release. No malware scanning, transcoding, account-level ownership, or billing is included.
 
+## Netlify frontend deployment
+
+**Netlify does not execute the PHP API.** A `netlify.app` address hosts the React build; it does not replace PHP/MySQL hosting. The Vite development proxy and local Windows servers are not deployed by `vite build`. The API therefore returns 404 if only `dist/` is deployed without a hosted backend.
+
+For the existing PHP stack, hosting the entire app on PHP/MySQL hosting is the simplest deployment; follow the next section. If you keep the frontend on Netlify:
+
+1. Deploy `api/` and storage to a public HTTPS **PHP-capable server** with MySQL. Configure its database, writable storage, upload limits, and administrator password. Do not upload `config.local.php`, source code or database credentials to Netlify's publish folder.
+2. On that PHP server, set `public_url` to `https://ar-photo25.netlify.app` (or your actual frontend domain). Newly generated QR links must open the public frontend, not localhost or the backend server.
+3. Set the Netlify **build environment variable** `PHP_BACKEND_URL` to the complete PHP endpoint, e.g. `https://backend.example.com/api/index.php`. This is a placeholder: supply your real PHP host. The `netlify.app` URL is not a valid PHP backend. Never put MySQL credentials in a `VITE_` variable.
+4. Commit the included `netlify.toml` and build scripts. Netlify runs `npm run build:netlify` and publishes **dist**. The build generates `dist/_redirects`, forwarding `/api/index.php` to your PHP server while keeping browser requests and session cookies on the frontend origin. The build intentionally fails with an explanatory message when the PHP backend is missing. For manual drag-and-drop deployment, set `PHP_BACKEND_URL` locally, run `npm run build:netlify`, and upload the resulting `dist` directory including `_redirects`.
+5. Redeploy and open `https://ar-photo25.netlify.app/api/index.php?action=health`; it must return `{"ok":true}` before testing uploads. Verify real file uploads and administrator sign-in on the deployed site.
+
+Netlify's proxy has a [26-second timeout](https://docs.netlify.com/manage/routing/redirects/rewrites-proxies/). Large or slow video uploads can exceed it. To reliably support the original 100 MB requirement, prefer serving frontend and PHP together on PHP/MySQL hosting, or implement direct uploads to external object storage as a separate architecture change. A Netlify-only implementation requires replacing the PHP backend with supported serverless code and suitable external storage/database services.
+
+PHP is available during Netlify builds, but there is [no deployed PHP application server](https://answers.netlify.com/t/php-file-not-serving/16786). Merely setting `PHP_VERSION`, copying PHP files into `dist`, or starting local XAMPP does not provide a live backend.
+
 ## Deploy to PHP/MySQL hosting
 
 1. Create a MySQL database and limited application user. Import the table schema. Set credentials in `api/config.local.php`. Set `public_url` to the final HTTPS frontend URL, e.g. `https://memories.example.com` or `https://example.com/memories`.
