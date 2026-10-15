@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { netlifyProxyRule } from '../scripts/netlify-config.mjs';
+import { netlifyProxyRule, netlifyBuildConfig } from '../scripts/netlify-config.mjs';
+test('Netlify deployments use a real serverless backend by default, with no PHP host required', () => {
+  assert.deepEqual(netlifyBuildConfig(), { mode: 'netlify', redirects: '/api/index.php /.netlify/functions/api 200!\n' });
+  assert.equal(netlifyBuildConfig('php', 'https://backend.example.com/api/index.php').mode, 'php');
+});
 test('Netlify proxy retains the exact hosted API endpoint and same-origin frontend path', () => {
   assert.equal(netlifyProxyRule('https://backend.example.com/memories/api/index.php'), '/api/index.php https://backend.example.com/memories/api/index.php 200!\n');
 });

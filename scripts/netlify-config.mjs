@@ -1,3 +1,8 @@
+export function netlifyBuildConfig(mode = 'netlify', phpUrl) {
+  if (mode === 'php') return { mode: 'php', redirects: netlifyProxyRule(phpUrl) };
+  if (mode !== 'netlify') throw new Error('NETLIFY_BACKEND must be netlify or php.');
+  return { mode: 'netlify', redirects: '/api/index.php /.netlify/functions/api 200!\n' };
+}
 export function netlifyProxyRule(value) {
   if (!value?.trim()) throw new Error('Netlify cannot run the PHP backend. Set PHP_BACKEND_URL to a separately hosted HTTPS PHP endpoint (for example https://backend.example.com/api/index.php), or deploy the entire app on PHP/MySQL hosting.');
   let url;

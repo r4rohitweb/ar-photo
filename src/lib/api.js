@@ -8,11 +8,12 @@ export function endpoint(action, params = {}) {
 let csrf = '';
 export async function api(action, { method = 'GET', body, params } = {}) {
   const response = await fetch(endpoint(action, params), { method, credentials: 'same-origin', headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(csrf ? { 'X-CSRF-Token': csrf } : {}) }, body: body ? JSON.stringify(body) : undefined });
-  const result = parseResponse(await response.text(), response.status, { development: import.meta.env.DEV });
+  const result = parseResponse(await response.text(), response.status, { development: import.meta.env.DEV, backend: import.meta.env.VITE_API_MODE });
   if (result.csrf) csrf = result.csrf;
   return result;
 }
 export function upload(form, onProgress, { id, signal } = {}) {
+  if (import.meta.env.VITE_API_MODE === 'netlify') return import('./netlify-upload').then(({ netlifyUpload }) => netlifyUpload(form, onProgress, { id, signal, endpoint, csrf }));
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', endpoint(id ? 'update' : 'create', id ? { id } : {}));

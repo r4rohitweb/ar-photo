@@ -12,6 +12,7 @@ test('JSON API errors retain their specific server message', () => {
   assert.throws(() => parseResponse('<html>unexpected error</html>', 500), /HTTP 500/);
 });
 test('hosted deployment errors give deployment guidance while local errors retain Vite guidance', () => {
+  assert.throws(() => parseResponse('<html>Not found</html>', 404, { backend: 'netlify' }), /including its functions/);
   assert.throws(() => parseResponse('<html>Not found</html>', 404), /hosted PHP backend/);
   assert.throws(() => parseResponse('<html>Not found</html>', 404, { development: true }), /Vite proxy/);
   assert.throws(() => parseResponse('', 502), /hosted backend service/);

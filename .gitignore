@@ -1,5 +1,7 @@
 node_modules/
 .local/
+.netlify/
+server/netlify/generated-deployment.mjs
 dist/
 .env.local
 .env.production.local

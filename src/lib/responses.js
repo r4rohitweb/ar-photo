@@ -1,6 +1,7 @@
-export function parseResponse(text, status, { development = false } = {}) {
+export function parseResponse(text, status, { development = false, backend } = {}) {
   let data;
   try { data = JSON.parse(text); } catch {
+    if (status === 404 && backend === 'netlify') throw new Error('The upload service was not deployed. Redeploy the complete project through Netlify Git builds or the Netlify CLI, including its functions.');
     if (status === 404) throw new Error(development
       ? 'The PHP API was not found. Start the backend and check the Vite proxy address.'
       : 'The PHP API was not found on this hosted site. Connect a hosted PHP backend and redeploy the frontend.');

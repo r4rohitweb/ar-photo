@@ -22,7 +22,7 @@ test('real upload, QR preview, same-frame playback, replay, edit and delete', as
   await expect(video).toHaveCSS('opacity', '0');
   const after = await player.boundingBox(); expect(after.width).toBe(before.width); expect(after.height).toBe(before.height);
   await page.getByRole('button', { name: 'Replay memory' }).click(); await expect(video).toHaveJSProperty('paused', false);
-  await page.goto('/#/admin'); await page.getByLabel('Admin password').fill('integration-test-password'); await page.getByRole('button', { name: 'Open my experiences' }).click();
+  await page.goto('/#/admin'); await page.getByLabel('Admin password').fill(process.env.STILLMOTION_TEST_ADMIN_PASSWORD || 'integration-test-password'); await page.getByRole('button', { name: 'Open my experiences' }).click();
   const card = page.locator('.experience-card').filter({ has: page.locator(`[href="#/preview/${id}"]`) });
   await expect(card).toBeVisible(); await expect(card).toContainText('1 scans');
   await card.getByLabel('Edit experience', { exact: true }).click(); await page.getByLabel('Memory name').fill('Updated real memory'); await page.getByRole('button', { name: 'Save changes' }).click();

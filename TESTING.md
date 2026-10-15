@@ -1,6 +1,33 @@
 # Verification guide
 
-The app has unit tests, fixture-backed browser tests, a live PHP/MySQL API test, a live end-to-end browser test, and an opt-in AR initialization test. Live tests must use an isolated test database; their known password is not suitable for a real deployment.
+The app has unit tests, a native Netlify API test using the official Blobs SDK/emulator, fixture-backed browser tests, a live PHP/MySQL API test, end-to-end browser tests, and an opt-in AR initialization test. Live PHP tests must use an isolated test database; test passwords are not suitable for a real deployment.
+
+## Native Netlify backend
+
+`npm test` exercises the real serverless API factory and Netlify Blobs SDK against Netlify's local storage emulator. It checks persisted uploads, file signatures, chunk replay/conflicts, admin authentication/CSRF, stable QR URLs, scans, edits, deletion, and expired-upload cleanup. It requires no Netlify account and does not access production storage.
+
+Build and package the production frontend/functions:
+
+```powershell
+npm.cmd run build:netlify
+npm.cmd run check:netlify
+```
+
+The packager verifies both handlers are modern Netlify API v2 functions and that the cleanup schedule is retained. Native builds no longer require `PHP_BACKEND_URL`.
+
+To test the built frontend end to end, start `npm.cmd run preview:netlify` in a separate terminal. It runs the production API code and the official Blobs emulator at `http://127.0.0.1:5190`, persisting test data under ignored `.local/netlify-emulator`. Use a clean test store if previous tests exhausted the login/upload limits. In a second terminal:
+
+```powershell
+$env:STILLMOTION_TEST_BASE_URL = 'http://127.0.0.1:5190'
+$env:STILLMOTION_LIVE_API = 'http://127.0.0.1:5190/api/index.php'
+$env:STILLMOTION_TEST_ADMIN_PASSWORD = 'netlify-test-password'
+$env:STILLMOTION_NATIVE_NETLIFY = '1'
+npx.cmd playwright test tests/browser/live.spec.js tests/browser/netlify-large.spec.js --workers=1
+```
+
+The large-file test appends a valid ISO BMFF free-space box to the CC0 flower clip, creating a playable MP4 of exactly 100 MiB. It verifies that 51 requests (one photo part and 50 video parts) each stay at or below 2 MiB, and that the resulting video plays through byte-range requests. Desktop runs this large case; desktop/mobile both run the ordinary create/play/replay/edit/delete lifecycle. `test-results/flower.mp4` must exist; download it with the command in the PHP section below if needed.
+
+These checks verify the actual handlers, SDK persistence, streaming, and browser behavior locally. They do not assert that a live Netlify account has deployed/authorized the functions or enabled the required platform features. After deployment, check the public health endpoint and upload a real memory from a phone.
 
 ## Routine checks
 

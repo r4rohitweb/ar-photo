@@ -5,6 +5,11 @@
 [build.environment]
   NODE_VERSION = "22"
 
-# Set PHP_BACKEND_URL in Netlify's build environment to the complete HTTPS
-# PHP endpoint, e.g. https://backend.example.com/api/index.php.
-# build:netlify generates a same-origin API proxy in dist/_redirects.
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Default production backend: Netlify Functions + Netlify Blobs.
+# Set STILLMOTION_ADMIN_PASSWORD as a secret for the Functions scope to enable admin.
+# Optionally set STILLMOTION_PUBLIC_URL to your canonical frontend URL.
+# Legacy PHP hosting remains available with NETLIFY_BACKEND=php and PHP_BACKEND_URL.

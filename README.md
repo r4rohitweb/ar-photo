@@ -1,6 +1,6 @@
 # Stillmotion
 
-A React + PHP/MySQL photo-to-video application. Upload a photograph and a video, generate a permanent experience URL, download a printable photograph with a real QR code, and play the video inside the original photo frame.
+A photo-to-video application with React and two supported backends: PHP/MySQL for local/XAMPP and PHP hosting, and Netlify Functions + Netlify Blobs for Netlify production. Upload a photograph and a video, generate a permanent experience URL, download a printable photograph with a real QR code, and play the video inside the original photo frame.
 
 ## Project structure
 
@@ -36,6 +36,9 @@ ar-video/
 │   ├── config.local.php          # Created by setup; ignored by Git
 │   └── .htaccess                 # Denies HTTP access to configuration
 ├── database/schema.sql
+├── netlify/functions/             # Production API and scheduled cleanup
+├── server/netlify/                # Native API, media validation/ranges, Blobs persistence
+├── netlify.toml                   # Build, publish, and Functions settings
 ├── storage/                      # Randomized uploaded filenames; HTTP denied
 ├── scripts/setup.php            # CLI-only interactive database/admin setup
 ├── tests/                        # Validation and browser checks
@@ -47,7 +50,7 @@ ar-video/
 
 ## Local setup with XAMPP and Vite
 
-Requirements: Node.js 20.19+ or 22.12+, PHP 8.0+ with `pdo_mysql`, `fileinfo`, and `exif` (for camera JPEG orientation), MySQL 5.7+ or MariaDB 10.4+, and Apache. The included code supports XAMPP's PHP 8.0. Use a currently maintained PHP release for public hosting.
+Requirements: Node.js 22.12+, PHP 8.0+ with `pdo_mysql`, `fileinfo`, and `exif` (for camera JPEG orientation), MySQL 5.7+ or MariaDB 10.4+, and Apache for PHP hosting. Netlify production requires Node.js 22 and does not require PHP or MySQL. The included local PHP code supports XAMPP's PHP 8.0; use a maintained PHP release for public PHP hosting.
 
 1. Put this project at `C:\xampp\htdocs\testing\ar-video` (the current workspace).
 2. Start **MySQL** in the XAMPP Control Panel if using the standard port 3306. `npm run dev` starts a dedicated PHP server on port 8080, so Apache is optional for development. In this workspace, a separate project-owned MariaDB database on **3308** is configured under `.local/mysql` because the system MySQL server was not completing startup. The development command automatically restarts that project database when needed; it does not change XAMPP's other databases.
@@ -131,21 +134,68 @@ Creation combines validated file upload and experience creation in one request s
 
 There are basic session-based upload and login limits. They are **not** a substitute for an edge/IP rate limiter on an internet-facing public upload service. Configure host-level quotas, abuse controls and backups before public release. No malware scanning, transcoding, account-level ownership, or billing is included.
 
-## Netlify frontend deployment
+## Deploy the complete app to Netlify
 
-**Netlify does not execute the PHP API.** A `netlify.app` address hosts the React build; it does not replace PHP/MySQL hosting. The Vite development proxy and local Windows servers are not deployed by `vite build`. The API therefore returns 404 if only `dist/` is deployed without a hosted backend.
+The project now includes a **native Netlify backend**. Netlify Functions run the API; Netlify Blobs stores experience records, admin sessions, scan counters, upload manifests, and photo/video chunks. Blobs is a persistent key/value database for this version, not MySQL. There is no SQL service to provision and no PHP host to configure. Local `npm run dev` continues to use PHP/MySQL.
 
-For the existing PHP stack, hosting the entire app on PHP/MySQL hosting is the simplest deployment; follow the next section. If you keep the frontend on Netlify:
+**Deploy the complete project through a Git-connected Netlify build or the Netlify CLI. Dragging only `dist/` into the Netlify drop zone does not deploy the serverless functions.** That would reproduce the missing API error.
 
-1. Deploy `api/` and storage to a public HTTPS **PHP-capable server** with MySQL. Configure its database, writable storage, upload limits, and administrator password. Do not upload `config.local.php`, source code or database credentials to Netlify's publish folder.
-2. On that PHP server, set `public_url` to `https://ar-photo25.netlify.app` (or your actual frontend domain). Newly generated QR links must open the public frontend, not localhost or the backend server.
-3. Set the Netlify **build environment variable** `PHP_BACKEND_URL` to the complete PHP endpoint, e.g. `https://backend.example.com/api/index.php`. This is a placeholder: supply your real PHP host. The `netlify.app` URL is not a valid PHP backend. Never put MySQL credentials in a `VITE_` variable.
-4. Commit the included `netlify.toml` and build scripts. Netlify runs `npm run build:netlify` and publishes **dist**. The build generates `dist/_redirects`, forwarding `/api/index.php` to your PHP server while keeping browser requests and session cookies on the frontend origin. The build intentionally fails with an explanatory message when the PHP backend is missing. For manual drag-and-drop deployment, set `PHP_BACKEND_URL` locally, run `npm run build:netlify`, and upload the resulting `dist` directory including `_redirects`.
-5. Redeploy and open `https://ar-photo25.netlify.app/api/index.php?action=health`; it must return `{"ok":true}` before testing uploads. Verify real file uploads and administrator sign-in on the deployed site.
+1. Include `netlify/`, `server/`, `scripts/`, `src/`, `public/`, `package.json`, `package-lock.json`, and `netlify.toml` in your source repository. Exclude `.local/`, `.netlify/`, `node_modules/`, `test-results/`, local configuration, and credentials. The deployment-context module is generated by the build command.
+2. In Netlify, connect the repository to the existing **ar-photo25** project and use:
 
-Netlify's proxy has a [26-second timeout](https://docs.netlify.com/manage/routing/redirects/rewrites-proxies/). Large or slow video uploads can exceed it. To reliably support the original 100 MB requirement, prefer serving frontend and PHP together on PHP/MySQL hosting, or implement direct uploads to external object storage as a separate architecture change. A Netlify-only implementation requires replacing the PHP backend with supported serverless code and suitable external storage/database services.
+   ```text
+   Build command:       npm run build:netlify
+   Publish directory:   dist
+   Functions directory: netlify/functions
+   Node version:        22
+   ```
 
-PHP is available during Netlify builds, but there is [no deployed PHP application server](https://answers.netlify.com/t/php-file-not-serving/16786). Merely setting `PHP_VERSION`, copying PHP files into `dist`, or starting local XAMPP does not provide a live backend.
+   The included `netlify.toml` supplies these settings. Remove an old `NETLIFY_BACKEND=php` override, if present. `PHP_BACKEND_URL` is not needed for the native backend. Do not override the build command with plain `vite build` or `npm run build` on Netlify.
+3. Add a server-only environment variable **STILLMOTION_ADMIN_PASSWORD**, at least 12 characters, with the **Functions** scope (or all scopes if your plan does not expose scope selection). Choose your own strong password and mark it as secret where available. Uploads and public playback work without this variable; administrator sign-in intentionally remains disabled until it is configured. Never prefix it with `VITE_`.
+4. Optionally set **STILLMOTION_PUBLIC_URL=https://ar-photo25.netlify.app** in the Functions scope to pin QR codes to that domain. Otherwise production uses Netlify's site URL automatically. Redeploy after changing environment variables.
+5. Deploy the source. Netlify builds the frontend, bundles `api` and scheduled `cleanup` functions, and configures the API alias. Blobs authentication is supplied by the Netlify Functions runtime; it does not use your local XAMPP credentials. Your account must have Functions and Blobs available; usage is subject to your Netlify plan.
+6. Open **https://ar-photo25.netlify.app/api/index.php?action=health**. A working native deployment returns:
+
+   ```json
+   {"ok":true,"backend":"netlify","database":"netlify-blobs"}
+   ```
+
+   Then create a memory, scan its QR from a different phone, and sign in at `/#/admin` using the password you configured.
+
+If the site is not connected to Git, deploy from the project root using the included CLI dependency:
+
+```powershell
+npm.cmd ci
+npx.cmd netlify login
+npx.cmd netlify link
+# Select the existing ar-photo25 project when prompted.
+npm.cmd run deploy:netlify
+```
+
+`netlify login` authorizes your own account in a browser. Do not paste the access token in chat. `deploy:netlify` builds and uploads both frontend and functions to the linked project. See [Netlify's deployment guide](https://docs.netlify.com/api-and-cli-guides/cli-guides/get-started-with-cli/).
+
+The original PHP proxy remains available as an explicit alternative: set `NETLIFY_BACKEND=php` and `PHP_BACKEND_URL=https://your-php-server.example/api/index.php`, host the PHP/MySQL backend separately, and set its `public_url` to the Netlify frontend address. Large PHP-proxied uploads are subject to Netlify's proxy timeout; the default native backend uses chunked uploads instead.
+
+### Netlify storage and upload behavior
+
+- The `/api/index.php` URL is retained for frontend/AR compatibility, but requests are handled by the JavaScript Netlify function; no PHP is executed on Netlify.
+- Each upload uses authenticated 2 MiB chunks, individually retried on transient failures. The server verifies declared sizes, actual image/video signatures, image dimensions, and a 40-megapixel image limit before publishing the experience. The original 10 MB image and 100 MB video limits apply. Upload capabilities expire after an hour; no partial experience is published.
+- Video delivery supports byte ranges capped at 4 MiB per response. Large video requests need a Range header, as browser video players normally send. Photos stream from their stored chunks. These bounds account for Netlify's request and response limits; see [function limits](https://docs.netlify.com/build/functions/configuration/).
+- Experience and scan changes use strong reads and conditional writes. Concurrent scans preserve counts; conflicting administrator edits fail instead of overwriting newer data. Admin sessions use secure HttpOnly cookies on HTTPS with CSRF protection. Login and upload rate limits are persisted per client IP.
+- Production stores use stable names beginning `stillmotion-v1-production-` and survive new deployments. Deploy previews use separate namespaces. Local PHP/MySQL memories are not copied into Netlify storage automatically; existing local records and media remain intact.
+- A scheduled cleanup function removes expired unfinished uploads, old sessions/rate limits, and queued deleted/replaced media. Cleanup is bounded per invocation and retries remaining work on later runs. A successful deletion makes its experience unavailable immediately; media cleanup is queued if a storage failure interrupts it.
+- Blobs is site-wide managed storage. You can inspect it in **Data & Storage > Blobs**. The public experience links remain share-by-link; this is not an account-based private photo vault. See [Netlify Blobs](https://docs.netlify.com/build/data-and-storage/netlify-blobs/) for platform behavior and usage.
+
+### Validate the Netlify version locally
+
+```powershell
+npm.cmd test
+npm.cmd run build:netlify
+npm.cmd run check:netlify
+npm.cmd run preview:netlify
+```
+
+The last command serves the built frontend and actual serverless API code using Netlify's official Blobs emulator at **http://127.0.0.1:5190**. It is a QA server, not production hosting. Its default administrator password is `netlify-test-password` unless overridden locally with `STILLMOTION_ADMIN_PASSWORD`; this test password is never configured for the deployed site. See [TESTING.md](TESTING.md) for end-to-end and 100 MB upload checks.
 
 ## Deploy to PHP/MySQL hosting
 
@@ -188,4 +238,4 @@ Get-ChildItem api,scripts -Filter *.php -Recurse | ForEach-Object { php -l $_.Fu
 
 Browser checks (after installing Playwright's Chromium with `npx playwright install chromium`) run via `npm.cmd run test:browser`. The default suite verifies desktop/mobile layouts, file validation/previews, QR/print downloads, viewer failure handling, and admin interactions with deterministic API fixtures. Live lifecycle and AR tests are opt-in; see [TESTING.md](TESTING.md) for the isolated MySQL/PHP setup.
 
-Verified during implementation: production build, PHP syntax, two validation tests, a real PHP/MySQL API lifecycle, eight desktop/mobile interface checks, two desktop/mobile real upload → playback → replay → edit → delete flows, and AR target compilation/engine initialization with a simulated Chromium camera. These checks do not establish that a physical device can play every uploaded codec or track a printed target. Scan a real QR and test a physical print on your target phones before release.
+Verified during implementation: production builds, PHP syntax and local API lifecycle, validation/error handling, native Netlify API persistence through the official Blobs SDK/emulator, desktop/mobile upload → playback → replay → edit → delete flows, a 100 MB MP4 uploaded in 2 MiB chunks with ranged playback, and AR target compilation/engine initialization with a simulated Chromium camera. These are local/emulator checks; they do not verify an authenticated live Netlify deployment or physical image tracking. Scan a real QR and test a physical print on your target phones before release.
