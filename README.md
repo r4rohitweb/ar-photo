@@ -80,7 +80,7 @@ If your database user cannot create databases, create one using your hosting pan
 
 Health check: `http://localhost:5173/api/index.php?action=health` should return `{"ok":true}`. A 503 usually means MySQL is stopped or configuration/schema is missing. PHP logs detailed errors while the API returns safe messages. A 404 indicates incorrect PHP routing rather than an upload-size problem.
 
-Local database files and configuration are ignored by Git. The project database listens only on `127.0.0.1:3308`. To stop it manually, run `C:/xampp/mysql/bin/mysqladmin.exe --protocol=tcp --host=127.0.0.1 --port=3308 --user=root shutdown`. The next `npm run dev` starts it again. For this local configuration, uploads work now; run `php scripts/setup.php` when you want to set an administrator password.
+Local database files and configuration are ignored by Git. The project database listens only on `127.0.0.1:3308`. While `npm run dev` is running, it checks that database every two seconds and restarts it if it stops. Startup failures are logged in `.local/mysql-supervisor.log`, with retries spaced at least 15 seconds apart. To stop the database intentionally, stop the development server first, then run `C:/xampp/mysql/bin/mysqladmin.exe --protocol=tcp --host=127.0.0.1 --port=3308 --user=root shutdown`. The next `npm run dev` starts it again. For this local configuration, run `php scripts/setup.php` when you want to set an administrator password.
 
 ## Use a phone on the same Wi-Fi
 
