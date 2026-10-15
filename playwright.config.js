@@ -1,0 +1,3 @@
+import { defineConfig, devices } from '@playwright/test';
+const baseURL = process.env.STILLMOTION_TEST_BASE_URL || 'http://127.0.0.1:5173';
+export default defineConfig({ testDir: './tests/browser', outputDir: './test-results/browser', timeout: 30000, fullyParallel: false, use: { baseURL, trace: 'retain-on-failure' }, projects: [{ name: 'desktop', use: { ...devices['Desktop Chrome'] } }, { name: 'mobile', use: { ...devices['iPhone 13'], defaultBrowserType: 'chromium' } }], webServer: { command: `npm.cmd run dev -- --port ${new URL(baseURL).port} --strictPort`, url: baseURL, reuseExistingServer: !process.env.CI } });

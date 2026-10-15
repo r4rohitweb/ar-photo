@@ -1,0 +1,10 @@
+node_modules/
+.local/
+dist/
+.env.local
+.env.production.local
+api/config.local.php
+storage/*
+!storage/.htaccess
+!storage/.gitkeep
+test-results/

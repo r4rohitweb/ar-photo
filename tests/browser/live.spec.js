@@ -1,0 +1,33 @@
+import { test, expect } from '@playwright/test';
+test('real upload, QR preview, same-frame playback, replay, edit and delete', async ({ page }) => {
+  test.skip(!process.env.STILLMOTION_LIVE_API, 'Requires an isolated PHP/MySQL verification server and test-results/flower.mp4.');
+  // Use Vite's real proxy: browser request interception omits streamed file payloads.
+  await page.goto('/');
+  await page.getByLabel('Upload photo').setInputFiles('public/images/mountains.jpg');
+  await page.getByLabel('Upload video').setInputFiles('test-results/flower.mp4');
+  await page.getByLabel('Give your memory a name').fill('A real end-to-end memory');
+  await page.getByRole('button', { name: 'Generate experience' }).click();
+  await expect(page).toHaveURL(/#\/preview\/[a-f0-9]{32}/);
+  const id = page.url().split('/').pop();
+  await expect(page.getByAltText('QR code to play this memory')).toBeVisible();
+  await page.getByRole('link', { name: 'Preview the experience' }).click();
+  const player = page.locator('.memory-player'), video = player.locator('video');
+  await expect(video).toHaveJSProperty('paused', false, { timeout: 20000 });
+  await expect(video).toHaveCSS('opacity', '1');
+  const before = await player.boundingBox();
+  await page.getByRole('button', { name: 'Unmute video', exact: true }).click();
+  await expect(video).toHaveJSProperty('muted', false);
+  await video.evaluate(v => { v.currentTime = v.duration - 0.1; });
+  await expect(page.getByRole('button', { name: 'Replay memory' })).toBeVisible();
+  await expect(video).toHaveCSS('opacity', '0');
+  const after = await player.boundingBox(); expect(after.width).toBe(before.width); expect(after.height).toBe(before.height);
+  await page.getByRole('button', { name: 'Replay memory' }).click(); await expect(video).toHaveJSProperty('paused', false);
+  await page.goto('/#/admin'); await page.getByLabel('Admin password').fill('integration-test-password'); await page.getByRole('button', { name: 'Open my experiences' }).click();
+  const card = page.locator('.experience-card').filter({ has: page.locator(`[href="#/preview/${id}"]`) });
+  await expect(card).toBeVisible(); await expect(card).toContainText('1 scans');
+  await card.getByLabel('Edit experience', { exact: true }).click(); await page.getByLabel('Memory name').fill('Updated real memory'); await page.getByRole('button', { name: 'Save changes' }).click();
+  const updated = card; await expect(updated).toContainText('Updated real memory');
+  await expect(updated.locator('.card-photo')).toHaveAttribute('href', `#/preview/${id}`);
+  await updated.getByLabel('Delete experience', { exact: true }).click(); await page.getByRole('dialog').getByRole('button', { name: 'Delete experience', exact: true }).click();
+  await expect(updated).toHaveCount(0);
+});
