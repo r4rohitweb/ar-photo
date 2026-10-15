@@ -23,7 +23,7 @@ test('Netlify accepts a 100 MB MP4 through bounded chunks and plays it using HTT
     await expect(page).toHaveURL(/#\/preview\/[a-f0-9]{32}/, { timeout: 90000 });
     id = page.url().split('/').pop();
     expect(parts).toBe(51); expect(largest).toBeLessThanOrEqual(2 * 1024 * 1024);
-    await page.getByRole('link', { name: 'Preview the experience' }).click();
+    await page.getByRole('link', { name: 'Watch without camera' }).click();
     await expect(page.locator('.memory-player video')).toHaveJSProperty('paused', false, { timeout: 20000 });
     await expect(page.locator('.memory-player video')).toHaveCSS('opacity', '1');
   } finally {

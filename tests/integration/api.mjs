@@ -18,7 +18,7 @@ test('real PHP/MySQL lifecycle, authentication, validation, media ranges and sca
   const fake = form(); fake.set('image', new Blob(['<?php echo "unsafe";'], { type: 'image/jpeg' }), 'fake.jpg'); assert.equal((await request('create', { method: 'POST', body: fake })).status, 400);
   const create = await request('create', { method: 'POST', body: form() }); assert.equal(create.status, 201); const { experience: item } = await create.json();
   try {
-    assert.match(item.unique_id, /^[a-f0-9]{32}$/); assert.match(item.qr_code_url, new RegExp(`/#/watch/${item.unique_id}`));
+    assert.match(item.unique_id, /^[a-f0-9]{32}$/); assert.match(item.qr_code_url, new RegExp(`/#/ar/${item.unique_id}`));
     assert.equal((await request('get', { params: { id: item.unique_id } })).status, 200);
     const media = await request('media', { params: { file: item.video_path }, headers: { Range: 'bytes=0-99' } }); assert.equal(media.status, 206); assert.equal((await media.arrayBuffer()).byteLength, 100);
     assert.equal((await request('media', { params: { file: '../config.local.php' } })).status, 404);

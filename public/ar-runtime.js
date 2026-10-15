@@ -1,8 +1,10 @@
 // Kept in an isolated document so MindAR's pinned Three.js version does not affect React.
 const status = document.querySelector('#status'), start = document.querySelector('#start'), sound = document.querySelector('#sound');
 let engine, video, targetUrl, texture, material, geometry, running = false;
+let targetVisible = false;
 function cleanup() {
   running = false;
+  targetVisible = false;
   video?.pause();
   engine?.renderer?.setAnimationLoop(null);
   try { if (engine?.controller && engine?.video?.srcObject) engine.stop(); } catch { /* Camera may still be starting. */ }
@@ -15,6 +17,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) video
 sound.onclick = () => { if (!video) return; video.muted = !video.muted; sound.textContent = video.muted ? 'Turn sound on' : 'Mute sound'; };
 start.onclick = async () => {
   start.disabled = true;
+  document.body.dataset.state = 'preparing';
   try {
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw new Error('Your camera needs HTTPS and a compatible browser. Return to the normal photo experience.');
     const params = new URLSearchParams(location.search), api = new URL(params.get('api') || '', location.href);
@@ -48,13 +51,28 @@ start.onclick = async () => {
     geometry = new THREE.PlaneGeometry(1, 1 / photoRatio); material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, toneMapped: false });
     const mesh = new THREE.Mesh(geometry, material); mesh.visible = false;
     const anchor = engine.addAnchor(0); anchor.group.add(mesh);
-    anchor.onTargetFound = async () => { status.textContent = 'Photo found. A moment, alive.'; try { await video.play(); mesh.visible = true; } catch { start.hidden = false; start.disabled = false; start.textContent = 'Tap to play tracked video'; start.onclick = () => video.play().then(() => { mesh.visible = true; start.hidden = true; }); } };
-    anchor.onTargetLost = () => { video.pause(); mesh.visible = false; status.textContent = 'Point your camera at the original printed photo.'; };
+    const playTrackedVideo = async () => {
+      if (!targetVisible) return;
+      try {
+        await video.play();
+        if (!targetVisible || document.hidden) { video.pause(); mesh.visible = false; return; }
+        mesh.visible = true; start.hidden = true;
+      } catch {
+        if (!targetVisible) return;
+        start.hidden = false; start.disabled = false; start.textContent = 'Tap to play tracked video';
+        start.onclick = playTrackedVideo;
+      }
+    };
+    anchor.onTargetFound = () => { targetVisible = true; status.textContent = 'Photo found. A moment, alive.'; playTrackedVideo(); };
+    anchor.onTargetLost = () => { targetVisible = false; video.pause(); mesh.visible = false; start.hidden = true; status.textContent = 'Point your camera at the original printed photo.'; };
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && running && targetVisible) playTrackedVideo(); });
     status.textContent = 'Opening camera…'; await engine.start(); running = true;
     engine.renderer.setAnimationLoop(() => { if (running) engine.renderer.render(engine.scene, engine.camera); });
     start.hidden = true; sound.style.display = 'block'; status.textContent = 'Point your camera at the original printed photo.';
+    document.body.dataset.state = 'running';
   } catch (error) {
     cleanup();
+    document.body.dataset.state = 'error';
     const message = error?.message || '';
     status.textContent = /fetch|module|network/i.test(message)
       ? 'Camera tracking could not load. Check your connection, or return to the photo experience.'

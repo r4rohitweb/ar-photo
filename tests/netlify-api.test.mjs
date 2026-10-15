@@ -45,7 +45,7 @@ test('Netlify API persists validated chunk uploads, sessions, QR links, edits, s
     assert.equal((await part(upload, 'image', 0, image)).status, 200);
     const changed = Buffer.from(image); changed[100] ^= 1; assert.equal((await part(upload, 'image', 0, changed)).status, 409);
     const { experience } = await finish(upload), id = experience.unique_id;
-    assert.match(experience.qr_code_url, new RegExp(`/#/watch/${id}$`)); assert.ok(experience.image_width > 0);
+    assert.match(experience.qr_code_url, new RegExp(`/#/ar/${id}$`)); assert.ok(experience.image_width > 0);
     assert.equal((await finish(upload)).experience.unique_id, id);
     const media = await request('media', { params: { file: experience.video_path }, headers: { Range: `bytes=${CHUNK_SIZE - 10}-${CHUNK_SIZE + 10}` } });
     assert.equal(media.status, 206); assert.deepEqual(Buffer.from(await media.arrayBuffer()), video.subarray(CHUNK_SIZE - 10, CHUNK_SIZE + 11));

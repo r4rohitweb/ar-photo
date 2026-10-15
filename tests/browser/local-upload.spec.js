@@ -10,7 +10,7 @@ test('local development server accepts real photo and video uploads', async ({ p
   await expect(page.getByAltText('QR code to play this memory')).toBeVisible();
   const id = page.url().split('/').pop();
   console.log(`Created verification experience: ${id}`);
-  await page.getByRole('link', { name: 'Preview the experience' }).click();
+  await page.getByRole('link', { name: 'Watch without camera' }).click();
   await expect(page.locator('.memory-player video')).toHaveJSProperty('paused', false, { timeout: 15000 });
   await expect(page.locator('.memory-player video')).toHaveCSS('opacity', '1');
 });

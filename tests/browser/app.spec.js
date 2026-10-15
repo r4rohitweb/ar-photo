@@ -27,13 +27,36 @@ test('creation is responsive and validates a selected photo', async ({ page }, i
 test('preview exports a scannable QR and a framed photograph', async ({ page }) => {
   await mockAPI(page); await page.goto(`/#/preview/${id}`);
   await expect(page.getByRole('heading', { name: 'Scan to Bring This Photo to Life' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open WebAR' })).toHaveAttribute('href', `#/ar/${id}`);
   await expect(page.getByAltText('QR code to play this memory')).toHaveAttribute('src', /^data:image\/png;base64,/);
   const qrDownload = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download QR', exact: true }).click(); expect((await qrDownload).suggestedFilename()).toContain('stillmotion-qr');
   const photoDownload = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download photo with QR' }).click(); expect((await photoDownload).suggestedFilename()).toBe(`stillmotion-${id}.png`);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
-test('watch keeps a single fixed photo/video frame and handles video errors', async ({ page }) => {
+
+test('existing QR links open WebAR first and offer ordinary playback', async ({ page }) => {
   await mockAPI(page); await page.goto(`/#/watch/${id}`);
+  await expect(page).toHaveURL(new RegExp(`/#/ar/${id}$`));
+  await expect(page.getByAltText('Photo to scan with your camera')).toBeVisible();
+  const frame = page.frameLocator('iframe');
+  await expect(frame.getByRole('button', { name: 'Start WebAR camera' })).toBeVisible();
+  await expect(frame.locator('body')).toHaveAttribute('data-state', 'ready');
+  await expect(frame.locator('#camera video')).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole('link', { name: 'Watch without camera' }).click();
+  await expect(page).toHaveURL(new RegExp(`/#/play/${id}$`));
+  await expect(page.locator('.memory-player')).toBeVisible();
+});
+
+test('missing experiences do not start the AR camera', async ({ page }) => {
+  await mockAPI(page);
+  await page.route('**/api/index.php?action=get&**', route => route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'Experience not found.' }) }));
+  await page.goto(`/#/ar/${id}`);
+  await expect(page.getByRole('alert')).toContainText('Experience not found.');
+  await expect(page.locator('iframe')).toHaveCount(0);
+});
+test('watch keeps a single fixed photo/video frame and handles video errors', async ({ page }) => {
+  await mockAPI(page); await page.goto(`/#/play/${id}`);
   const player = page.locator('.memory-player'); await expect(player).toBeVisible(); const before = await player.boundingBox();
   await expect(player.locator('video')).toHaveAttribute('playsinline', '');
   await expect(page.getByRole('alert')).toContainText('could not be played');

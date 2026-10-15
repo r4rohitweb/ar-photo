@@ -212,7 +212,7 @@ export function createHandler({ stores, env = process.env, logger = console }) {
                 ...(previous || {}), id: previous?.id || claimed.experience_id, unique_id: claimed.experience_id, title: claimed.title,
                 image_path: validated.image?.name || previous.image_path, video_path: validated.video?.name || previous.video_path,
                 image_width: validated.image?.width || previous.image_width, image_height: validated.image?.height || previous.image_height,
-                qr_code_url: previous?.qr_code_url || `${claimed.public_url}/#/watch/${claimed.experience_id}`,
+                qr_code_url: previous?.qr_code_url || `${claimed.public_url}/#/ar/${claimed.experience_id}`,
                 scan_count: previous?.scan_count || 0, created_at: previous?.created_at || moment, updated_at: moment,
                 _revision: (previous?._revision || 0) + 1, _upload_id: uploadId, _deleted: false,
               };

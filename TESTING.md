@@ -39,7 +39,7 @@ npx.cmd playwright install chromium
 npm.cmd run test:browser
 ```
 
-The default browser suite runs eight fixture-backed tests across desktop and mobile. It skips live/AR tests unless their environment variables are set. Playwright writes only to `test-results/browser`; runtime test services use other subdirectories. Never put runtime data inside the browser test output folder.
+The default browser suite runs twelve fixture-backed tests across desktop and mobile. It covers QR downloads, legacy QR redirects into WebAR, the explicit camera-start screen, invalid experience handling, and ordinary playback fallback. It skips live/AR tests unless their environment variables are set. Playwright writes only to `test-results/browser`; runtime test services use other subdirectories. Never put runtime data inside the browser test output folder.
 
 ## Isolated live checks on Windows/XAMPP
 
@@ -94,7 +94,7 @@ Run from this project directory. This uses MariaDB on **3307**, PHP on **8089**,
    npx.cmd playwright test tests/browser/ar.spec.js --project=desktop --workers=1
    ```
 
-   It compiles the uploaded photo and starts MindAR with a simulated camera. It does not test the visual accuracy of physical image tracking. Compilation can take up to a minute. Browser network restrictions may block CDN modules; retry in a network-enabled environment.
+   This check also runs independently of the isolated PHP/MySQL setup, using fixture API responses on the normal Vite server. It needs `test-results/flower.mp4`. It follows an existing QR link into WebAR, compiles the photo, and starts MindAR with a simulated camera. It does not test the visual accuracy of physical image tracking. Compilation can take up to a minute. Browser network restrictions may block CDN modules; retry in a network-enabled environment.
 
 7. Stop PHP with Ctrl+C in its terminal and shut down isolated MariaDB:
 

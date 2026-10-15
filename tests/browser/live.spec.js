@@ -10,7 +10,10 @@ test('real upload, QR preview, same-frame playback, replay, edit and delete', as
   await expect(page).toHaveURL(/#\/preview\/[a-f0-9]{32}/);
   const id = page.url().split('/').pop();
   await expect(page.getByAltText('QR code to play this memory')).toBeVisible();
-  await page.getByRole('link', { name: 'Preview the experience' }).click();
+  await page.getByRole('link', { name: 'Open WebAR' }).click();
+  await expect(page.getByAltText('Photo to scan with your camera')).toBeVisible();
+  await expect(page.frameLocator('iframe').getByRole('button', { name: 'Start WebAR camera' })).toBeVisible();
+  await page.getByRole('link', { name: 'Watch without camera' }).click();
   const player = page.locator('.memory-player'), video = player.locator('video');
   await expect(video).toHaveJSProperty('paused', false, { timeout: 20000 });
   await expect(video).toHaveCSS('opacity', '1');

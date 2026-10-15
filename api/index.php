@@ -52,7 +52,7 @@ try {
                 $width = $image ? $image['dimensions'][0] : $existing['image_width']; $height = $image ? $image['dimensions'][1] : $existing['image_height'];
                 if ($updating) { $stmt = $pdo->prepare('UPDATE experiences SET title=?, image_path=?, video_path=?, image_width=?, image_height=? WHERE unique_id=?'); $stmt->execute([$name, $imagePath, $videoPath, $width, $height, $id]); }
                 else {
-                    $id = bin2hex(random_bytes(16)); $url = rtrim($config['public_url'], '/') . '/#/watch/' . $id;
+                    $id = bin2hex(random_bytes(16)); $url = rtrim($config['public_url'], '/') . '/#/ar/' . $id;
                     $stmt = $pdo->prepare('INSERT INTO experiences (unique_id,title,image_path,video_path,image_width,image_height,qr_code_url) VALUES (?,?,?,?,?,?,?)');
                     $stmt->execute([$id, $name, $imagePath, $videoPath, $width, $height, $url]);
                 }
